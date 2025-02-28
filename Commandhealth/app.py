@@ -1,9 +1,7 @@
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 import sqlite3
 import json, os
-from st_aggrid import AgGrid, GridOptionsBuilder
 
 st.set_page_config(layout="wide")
 hide_streamlit_style = """
