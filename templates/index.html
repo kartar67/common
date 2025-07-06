@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Health Check Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #333;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 8px;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-healthy { background-color: #4CAF50; }
+        .status-warning { background-color: #FF9800; }
+        .status-critical { background-color: #F44336; }
+
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .metric:last-child {
+            border-bottom: none;
+        }
+
+        .metric-label {
+            font-weight: 500;
+            color: #666;
+        }
+
+        .metric-value {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin-top: 15px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            background: #F44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .query-form {
+            margin-top: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            height: 100px;
+            resize: vertical;
+        }
+
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            color: #F44336;
+            background: #ffebee;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .success {
+            color: #4CAF50;
+            background: #e8f5e8;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            border-bottom-color: #667eea;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏥 Database Health Check Dashboard</h1>
+            <p>Monitor your database health, performance, and run diagnostic queries</p>
+        </div>
+
+        <div class="controls">
+            <button id="refreshBtn" class="btn btn-primary">🔄 Refresh</button>
+            <button id="startMonitoringBtn" class="btn btn-success">▶️ Start Monitoring</button>
+            <button id="stopMonitoringBtn" class="btn btn-danger">⏹️ Stop Monitoring</button>
+            <button id="generateReportBtn" class="btn btn-secondary">📊 Generate Report</button>
+        </div>
+
+        <div class="dashboard">
+            <!-- Current Health Status -->
+            <div class="card">
+                <h3>🔍 Current Health Status</h3>
+                <div id="currentHealth" class="loading">Loading...</div>
+            </div>
+
+            <!-- System Metrics -->
+            <div class="card">
+                <h3>📈 System Metrics</h3>
+                <div id="systemMetrics" class="loading">Loading...</div>
+            </div>
+
+            <!-- Monitoring Status -->
+            <div class="card">
+                <h3>⚙️ Monitoring Status</h3>
+                <div id="monitoringStatus" class="loading">Loading...</div>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="health-history">Health History</div>
+            <div class="tab" data-tab="query-checks">Query Checks</div>
+            <div class="tab" data-tab="custom-query">Custom Query</div>
+            <div class="tab" data-tab="reports">Reports</div>
+        </div>
+
+        <!-- Health History Tab -->
+        <div id="health-history" class="tab-content active">
+            <div class="card">
+                <h3>📊 Health Check History (Last 24 Hours)</h3>
+                <div class="chart-container">
+                    <canvas id="healthChart"></canvas>
+                </div>
+                <div id="healthHistory" class="history-list loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Query Checks Tab -->
+        <div id="query-checks" class="tab-content">
+            <div class="card">
+                <h3>🔍 Query Performance History</h3>
+                <div class="chart-container">
+                    <canvas id="queryChart"></canvas>
+                </div>
+                <div id="queryHistory" class="history-list loading">Loading...</div>
+            </div>
+        </div>
+
+        <!-- Custom Query Tab -->
+        <div id="custom-query" class="tab-content">
+            <div class="card">
+                <h3>🛠️ Run Custom Query</h3>
+                <div class="query-form">
+                    <div class="form-group">
+                        <label for="queryName">Query Name:</label>
+                        <input type="text" id="queryName" placeholder="Enter a name for this query">
+                    </div>
+                    <div class="form-group">
+                        <label for="queryText">SQL Query:</label>
+                        <textarea id="queryText" placeholder="Enter your SQL query here..."></textarea>
+                    </div>
+                    <button id="runQueryBtn" class="btn btn-primary">▶️ Run Query</button>
+                </div>
+                <div id="queryResult"></div>
+            </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div id="reports" class="tab-content">
+            <div class="card">
+                <h3>📋 Health Reports</h3>
+                <div class="controls">
+                    <select id="reportPeriod">
+                        <option value="1">Last 1 Hour</option>
+                        <option value="6">Last 6 Hours</option>
+                        <option value="24" selected>Last 24 Hours</option>
+                        <option value="168">Last 7 Days</option>
+                    </select>
+                    <button id="downloadReportBtn" class="btn btn-secondary">📥 Download Report</button>
+                </div>
+                <div id="reportContent" class="loading">Click "Generate Report" to create a report</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        class DatabaseHealthDashboard {
+            constructor() {
+                this.healthChart = null;
+                this.queryChart = null;
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupTabs();
+                this.loadInitialData();
+                this.startAutoRefresh();
+            }
+
+            setupEventListeners() {
+                document.getElementById('refreshBtn').addEventListener('click', () => this.loadInitialData());
+                document.getElementById('startMonitoringBtn').addEventListener('click', () => this.startMonitoring());
+                document.getElementById('stopMonitoringBtn').addEventListener('click', () => this.stopMonitoring());
+                document.getElementById('generateReportBtn').addEventListener('click', () => this.generateReport());
+                document.getElementById('runQueryBtn').addEventListener('click', () => this.runCustomQuery());
+                document.getElementById('downloadReportBtn').addEventListener('click', () => this.downloadReport());
+            }
+
+            setupTabs() {
+                const tabs = document.querySelectorAll('.tab');
+                const tabContents = document.querySelectorAll('.tab-content');
+
+                tabs.forEach(tab => {
+                    tab.addEventListener('click', () => {
+                        const targetTab = tab.dataset.tab;
+                        
+                        tabs.forEach(t => t.classList.remove('active'));
+                        tabContents.forEach(tc => tc.classList.remove('active'));
+                        
+                        tab.classList.add('active');
+                        document.getElementById(targetTab).classList.add('active');
+                    });
+                });
+            }
+
+            async loadInitialData() {
+                await Promise.all([
+                    this.loadCurrentHealth(),
+                    this.loadMonitoringStatus(),
+                    this.loadHealthHistory(),
+                    this.loadQueryHistory()
+                ]);
+            }
+
+            async loadCurrentHealth() {
+                try {
+                    const response = await fetch('/api/health/current');
+                    const health = await response.json();
+                    
+                    const statusClass = `status-${health.status}`;
+                    const statusIcon = health.status === 'healthy' ? '✅' : 
+                                     health.status === 'warning' ? '⚠️' : '❌';
+                    
+                    document.getElementById('currentHealth').innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Status</span>
+                            <span class="metric-value">
+                                <span class="status-indicator ${statusClass}"></span>
+                                ${statusIcon} ${health.status.toUpperCase()}
+                            </span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Response Time</span>
+                            <span class="metric-value">${health.response_time.toFixed(3)}s</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Connections</span>
+                            <span class="metric-value">${health.connection_count}</span>
+                        </div>
+                        ${health.error_message ? `<div class="error">Error: ${health.error_message}</div>` : ''}
+                    `;
+
+                    document.getElementById('systemMetrics').innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">CPU Usage</span>
+                            <span class="metric-value">${health.cpu_usage.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Memory Usage</span>
+                            <span class="metric-value">${health.memory_usage.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Disk Usage</span>
+                            <span class="metric-value">${health.disk_usage.toFixed(1)}%</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Last Check</span>
+                            <span class="metric-value">${new Date(health.timestamp).toLocaleString()}</span>
+                        </div>
+                    `;
+                } catch (error) {
+                    document.getElementById('currentHealth').innerHTML = `<div class="error">Error loading health data: ${error.message}</div>`;
+                }
+            }
+
+            async loadMonitoringStatus() {
+                try {
+                    const response = await fetch('/api/monitoring/status');
+                    const status = await response.json();
+                    
+                    const statusIcon = status.is_monitoring ? '🟢' : '🔴';
+                    const statusText = status.is_monitoring ? 'ACTIVE' : 'STOPPED';
+                    
+                    document.getElementById('monitoringStatus').innerHTML = `
+                        <div class="metric">
+                            <span class="metric-label">Monitoring</span>
+                            <span class="metric-value">${statusIcon} ${statusText}</span>
+                        </div>
+                        <div class="metric">
+                            <span class="metric-label">Auto-refresh</span>
+                            <span class="metric-value">🔄 Every 30 seconds</span>
+                        </div>
+                    `;
+                } catch (error) {
+                    document.getElementById('monitoringStatus').innerHTML = `<div class="error">Error loading monitoring status: ${error.message}</div>`;
+                }
+            }
+
+            async loadHealthHistory() {
+                try {
+                    const response = await fetch('/api/health/history?hours=24');
+                    const history = await response.json();
+                    
+                    this.updateHealthChart(history);
+                    
+                    const historyHtml = history.slice(0, 20).map(h => `
+                        <div class="history-item">
+                            <div>
+                                <span class="status-indicator status-${h.status}"></span>
+                                <strong>${h.status.toUpperCase()}</strong> - Response: ${h.response_time.toFixed(3)}s
+                            </div>
+                            <div class="timestamp">${new Date(h.timestamp).toLocaleString()}</div>
+                            ${h.error_message ? `<div class="error">${h.error_message}</div>` : ''}
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('healthHistory').innerHTML = historyHtml || '<div class="loading">No health check data available</div>';
+                } catch (error) {
+                    document.getElementById('healthHistory').innerHTML = `<div class="error">Error loading health history: ${error.message}</div>`;
+                }
+            }
+
+            async loadQueryHistory() {
+                try {
+                    const response = await fetch('/api/queries/history?hours=24');
+                    const history = await response.json();
+                    
+                    this.updateQueryChart(history);
+                    
+                    const historyHtml = history.slice(0, 20).map(q => `
+                        <div class="history-item">
+                            <div>
+                                <strong>${q.query_name}</strong> - ${q.execution_time.toFixed(3)}s
+                                <span class="status-indicator status-${q.status === 'success' ? 'healthy' : q.status === 'warning' ? 'warning' : 'critical'}"></span>
+                            </div>
+                            <div>Rows: ${q.rows_affected}</div>
+                            <div class="timestamp">${new Date(q.timestamp).toLocaleString()}</div>
+                            ${q.error_message ? `<div class="error">${q.error_message}</div>` : ''}
+                        </div>
+                    `).join('');
+                    
+                    document.getElementById('queryHistory').innerHTML = historyHtml || '<div class="loading">No query check data available</div>';
+                } catch (error) {
+                    document.getElementById('queryHistory').innerHTML = `<div class="error">Error loading query history: ${error.message}</div>`;
+                }
+            }
+
+            updateHealthChart(data) {
+                const ctx = document.getElementById('healthChart').getContext('2d');
+                
+                if (this.healthChart) {
+                    this.healthChart.destroy();
+                }
+                
+                const labels = data.slice(-20).map(d => new Date(d.timestamp).toLocaleTimeString());
+                const responseTimes = data.slice(-20).map(d => d.response_time);
+                const cpuUsage = data.slice(-20).map(d => d.cpu_usage);
+                
+                this.healthChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Response Time (s)',
+                            data: responseTimes,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            yAxisID: 'y'
+                        }, {
+                            label: 'CPU Usage (%)',
+                            data: cpuUsage,
+                            borderColor: '#ff6b6b',
+                            backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                            yAxisID: 'y1'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Response Time (s)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'CPU Usage (%)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            updateQueryChart(data) {
+                const ctx = document.getElementById('queryChart').getContext('2d');
+                
+                if (this.queryChart) {
+                    this.queryChart.destroy();
+                }
+                
+                const labels = data.slice(-20).map(d => new Date(d.timestamp).toLocaleTimeString());
+                const executionTimes = data.slice(-20).map(d => d.execution_time);
+                
+                this.queryChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Query Execution Time (s)',
+                            data: executionTimes,
+                            backgroundColor: 'rgba(102, 126, 234, 0.6)',
+                            borderColor: '#667eea',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Execution Time (s)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            async startMonitoring() {
+                try {
+                    const response = await fetch('/api/monitoring/start', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (result.status === 'started') {
+                        this.showMessage('Monitoring started successfully', 'success');
+                        this.loadMonitoringStatus();
+                    }
+                } catch (error) {
+                    this.showMessage(`Error starting monitoring: ${error.message}`, 'error');
+                }
+            }
+
+            async stopMonitoring() {
+                try {
+                    const response = await fetch('/api/monitoring/stop', { method: 'POST' });
+                    const result = await response.json();
+                    
+                    if (result.status === 'stopped') {
+                        this.showMessage('Monitoring stopped successfully', 'success');
+                        this.loadMonitoringStatus();
+                    }
+                } catch (error) {
+                    this.showMessage(`Error stopping monitoring: ${error.message}`, 'error');
+                }
+            }
+
+            async runCustomQuery() {
+                const queryName = document.getElementById('queryName').value;
+                const queryText = document.getElementById('queryText').value;
+                
+                if (!queryText.trim()) {
+                    this.showMessage('Please enter a SQL query', 'error');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/queries/run', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            name: queryName || 'Custom Query',
+                            query: queryText
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (response.ok) {
+                        const statusClass = result.status === 'success' ? 'success' : 'error';
+                        document.getElementById('queryResult').innerHTML = `
+                            <div class="${statusClass}">
+                                <h4>Query Result</h4>
+                                <p><strong>Execution Time:</strong> ${result.execution_time.toFixed(3)}s</p>
+                                <p><strong>Rows Affected:</strong> ${result.rows_affected}</p>
+                                <p><strong>Status:</strong> ${result.status}</p>
+                                ${result.error_message ? `<p><strong>Error:</strong> ${result.error_message}</p>` : ''}
+                            </div>
+                        `;
+                        
+                        // Refresh query history
+                        this.loadQueryHistory();
+                    } else {
+                        this.showMessage(`Error running query: ${result.error}`, 'error');
+                    }
+                } catch (error) {
+                    this.showMessage(`Error running query: ${error.message}`, 'error');
+                }
+            }
+
+            async generateReport() {
+                const hours = document.getElementById('reportPeriod').value;
+                
+                try {
+                    const response = await fetch(`/api/report?hours=${hours}`);
+                    const report = await response.json();
+                    
+                    document.getElementById('reportContent').innerHTML = `
+                        <div class="report">
+                            <h4>Health Report - Last ${hours} Hours</h4>
+                            <p><strong>Generated:</strong> ${new Date(report.generated_at).toLocaleString()}</p>
+                            
+                            <h5>Health Summary</h5>
+                            <ul>
+                                <li>Total Checks: ${report.health_summary.total_checks}</li>
+                                <li>Average Response Time: ${report.health_summary.avg_response_time}s</li>
+                                <li>Average CPU Usage: ${report.health_summary.avg_cpu_usage}%</li>
+                                <li>Average Memory Usage: ${report.health_summary.avg_memory_usage}%</li>
+                                <li>Status Distribution: ${JSON.stringify(report.health_summary.status_distribution)}</li>
+                            </ul>
+                            
+                            <h5>Query Summary</h5>
+                            <ul>
+                                <li>Total Queries: ${report.query_summary.total_queries}</li>
+                                <li>Average Execution Time: ${report.query_summary.avg_execution_time}s</li>
+                                <li>Status Distribution: ${JSON.stringify(report.query_summary.status_distribution)}</li>
+                            </ul>
+                        </div>
+                    `;
+                    
+                    this.currentReport = report;
+                } catch (error) {
+                    this.showMessage(`Error generating report: ${error.message}`, 'error');
+                }
+            }
+
+            downloadReport() {
+                if (!this.currentReport) {
+                    this.showMessage('Please generate a report first', 'error');
+                    return;
+                }
+                
+                const dataStr = JSON.stringify(this.currentReport, null, 2);
+                const dataBlob = new Blob([dataStr], {type: 'application/json'});
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `health-report-${new Date().toISOString().split('T')[0]}.json`;
+                link.click();
+                URL.revokeObjectURL(url);
+            }
+
+            showMessage(message, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = type;
+                messageDiv.textContent = message;
+                messageDiv.style.position = 'fixed';
+                messageDiv.style.top = '20px';
+                messageDiv.style.right = '20px';
+                messageDiv.style.zIndex = '1000';
+                messageDiv.style.padding = '10px 20px';
+                messageDiv.style.borderRadius = '6px';
+                
+                document.body.appendChild(messageDiv);
+                
+                setTimeout(() => {
+                    document.body.removeChild(messageDiv);
+                }, 3000);
+            }
+
+            startAutoRefresh() {
+                setInterval(() => {
+                    this.loadCurrentHealth();
+                    this.loadMonitoringStatus();
+                }, 30000); // Refresh every 30 seconds
+            }
+        }
+
+        // Initialize the dashboard when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new DatabaseHealthDashboard();
+        });
+    </script>
+</body>
+</html>
